@@ -1,8 +1,8 @@
 import os
-import streamlit as st
-import pandas as pd
 import itertools
 import re
+import streamlit as st
+import pandas as pd
 
 # ----------------------------------------------------
 # 1. ページ基本設定
@@ -26,8 +26,8 @@ def check_password():
         st.warning("このアプリを利用するにはパスワードが必要です。")
         
         default_password = st.secrets.get("password", "tomato123")
-        
         password = st.text_input("パスワードを入力してください", type="password")
+        
         if st.button("ログイン"):
             if password == default_password:
                 st.session_state["authenticated"] = True
@@ -68,6 +68,7 @@ def get_initial_hiragana(text):
     
     first_char = text[0]
     
+    # カタカナをひらがなに変換
     if 'ア' <= first_char <= 'ン':
         first_char = chr(ord(first_char) - 0x60)
     
@@ -77,30 +78,24 @@ def get_initial_hiragana(text):
     )
     first_char = first_char.translate(dakuon_map)
     
-    if first_char in HIRAGANA_LIST:
-        return first_char
-    else:
-        return "その他"
+    return first_char if first_char in HIRAGANA_LIST else "その他"
 
 # ----------------------------------------------------
-# 5. データ読み込み（20261111tomato.csvを指定）
+# 5. データ読み込み
 # ----------------------------------------------------
 CSV_FILENAME = "20261111tomato.csv"
 
 @st.cache_data
 def load_data():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, CSV_FILENAME)
-    
+    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CSV_FILENAME)
     if not os.path.exists(file_path):
         return None
         
     try:
         try:
-            df = pd.read_csv(file_path, index_col=0, encoding="utf-8")
+            return pd.read_csv(file_path, index_col=0, encoding="utf-8")
         except UnicodeDecodeError:
-            df = pd.read_csv(file_path, index_col=0, encoding="cp932")
-        return df
+            return pd.read_csv(file_path, index_col=0, encoding="cp932")
     except Exception:
         return None
 
@@ -117,75 +112,45 @@ st.subheader("💊 検索する薬剤の選択と絞り込み")
 
 col_f1, col_f2 = st.columns(2)
 
-bee_options = ["指定なし", "0日以上", "１日以上", "6日以上"]
-toba_options = ["指定なし", "低い（0〜30%）", "高い（30〜100%）"]
+BEE_OPTIONS = ["指定なし", "0日以上", "１日以上", "6日以上"]
+TOBA_OPTIONS = ["指定なし", "低い（0〜30%）"]
 
 with col_f1:
-    selected_bee_cond = st.selectbox(
-        "マルハナバチへの影響日数で絞り込み",
-        options=bee_options,
-        index=0
-    )
+    selected_bee_cond = st.selectbox("マルハナバチへの影響日数で絞り込み", options=BEE_OPTIONS, index=0)
 
 with col_f2:
-    selected_toba_cond = st.selectbox(
-        "タバコカスミカメの死亡率（死虫率）で絞り込み",
-        options=toba_options,
-        index=0
-    )
+    selected_toba_cond = st.selectbox("タバコカスミカメの死亡率（死虫率）で絞り込み", options=TOBA_OPTIONS, index=0)
 
-# 薬剤のフィルタリング処理
+# フィルタリング処理
 filtered_medicines_set = []
-bee_col = df_matrix.columns[0]  # マルハナバチへの影響日数カラム
-toba_col = df_matrix.columns[1] # タバコカスミカメへの影響日数カラム
+bee_col = df_matrix.columns[0]
+toba_col = df_matrix.columns[1]
 
 for med in df_matrix.index:
-    # 1. マルハナバチの条件判定
+    # マルハナバチ条件判定
     val_bee = df_matrix.loc[med, bee_col]
-    bee_matched = False
-    if selected_bee_cond == "指定なし":
-        bee_matched = True
-    elif pd.isna(val_bee) or str(val_bee).strip() == "":
-        bee_matched = True  # データなしは条件に含める
-    else:
+    bee_matched = True
+    if selected_bee_cond != "指定なし" and not (pd.isna(val_bee) or str(val_bee).strip() == ""):
         nums = re.findall(r'\d+', str(val_bee))
         if nums:
             num = float(nums[0])
-            if selected_bee_cond == "0日以上" and num >= 0:
-                bee_matched = True
-            elif selected_bee_cond == "１日以上" and num >= 1:
-                bee_matched = True
-            elif selected_bee_cond == "6日以上" and num >= 6:
-                bee_matched = True
-        else:
-            bee_matched = True
+            if selected_bee_cond == "0日以上":
+                bee_matched = (num >= 0)
+            elif selected_bee_cond == "１日以上":
+                bee_matched = (num >= 1)
+            elif selected_bee_cond == "6日以上":
+                bee_matched = (num >= 6)
 
-    # 2. タバコカスミカメの条件判定
+    # タバコカスミカメ条件判定
     val_toba = str(df_matrix.loc[med, toba_col]).strip()
-    toba_matched = False
-    if selected_toba_cond == "指定なし":
-        toba_matched = True
-    elif pd.isna(val_toba) or val_toba == "" or val_toba == "nan":
-        toba_matched = True  # データなしは条件に含める
-    else:
-        mapping = {
-            "◎": "低い（0〜30%）",
-            "○": "高い（30〜100%）",
-            "◯": "高い（30〜100%）",
-            "△": "高い（30〜100%）",
-            "×": "高い（30〜100%）"
-        }
-        mapped_val = mapping.get(val_toba)
-        if mapped_val == selected_toba_cond:
-            toba_matched = True
-        elif val_toba not in mapping:
-            toba_matched = True
+    toba_matched = True
+    if selected_toba_cond != "指定なし" and not (pd.isna(val_toba) or val_toba in ["", "nan"]):
+        if selected_toba_cond == "低い（0〜30%）":
+            toba_matched = (val_toba == "◎")
 
-    # 両方の条件を満たす場合のみリストに追加
     if bee_matched and toba_matched:
         filtered_medicines_set.append(med)
 
-# 混用マトリクスの列側にも存在する場合は候補に含める
 all_matrix_cols = df_matrix.columns[2:].tolist()
 all_medicines = sorted(list(set(filtered_medicines_set + [c for c in all_matrix_cols if c in filtered_medicines_set])))
 
@@ -198,23 +163,11 @@ for i in range(num_select):
     with cols[i]:
         st.markdown(f"**【 薬剤 {i+1} 】**")
         
-        selected_initial = st.selectbox(
-            f"頭文字を選択 ({i+1})",
-            options=HIRAGANA_LIST,
-            key=f"initial_{i}"
-        )
-        
-        filtered_list = [
-            m for m in all_medicines 
-            if get_initial_hiragana(m) == selected_initial
-        ]
+        selected_initial = st.selectbox("頭文字を選択", options=HIRAGANA_LIST, key=f"initial_{i}")
+        filtered_list = [m for m in all_medicines if get_initial_hiragana(m) == selected_initial]
         
         if filtered_list:
-            selected_med = st.selectbox(
-                f"薬剤を選択 ({i+1})",
-                options=filtered_list,
-                key=f"med_{i}"
-            )
+            selected_med = st.selectbox("薬剤を選択", options=filtered_list, key=f"med_{i}")
             selected_medicines.append(selected_med)
         else:
             st.warning("該当する薬剤がありません。")
@@ -229,13 +182,9 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
     
     pairs = list(itertools.combinations(selected_medicines, 2))
     
-    if not pairs:
-        st.info("単一薬剤が選択されています。2剤以上選択すると混用判定が行われます。")
-    else:
+    if pairs:
         results = []
-        has_ng = False
-        has_unknown = False
-        has_warning = False
+        has_ng = has_unknown = has_warning = False
         
         for med1, med2 in pairs:
             res = ""
@@ -246,7 +195,7 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
             
             res = res.strip()
             
-            if "×" in res or "▲" in res or "△" in res:
+            if any(k in res for k in ["×", "▲", "△"]):
                 if "×" in res:
                     status = "🔴 混用不可"
                 elif "▲" in res:
@@ -254,11 +203,8 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
                 else:
                     status = "🔴 混用不可（物理性・効力低下等）"
                 has_ng = True
-            elif "○" in res or "◎" in res:
-                if "○" in res:
-                    status = "🟡 条件付き（要攪拌）"
-                else:
-                    status = "🟡 条件付き（使用直前）"
+            elif any(k in res for k in ["○", "◎"]):
+                status = "🟡 条件付き（要攪拌）" if "○" in res else "🟡 条件付き（使用直前）"
                 has_warning = True
             elif "●" in res:
                 status = "🟢 混用可能"
@@ -283,8 +229,7 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
         else:
             st.success("✅ **選択されたすべての組み合わせで混用可能です。** 3剤以上の混用は推奨していません")
         
-        res_df = pd.DataFrame(results)
-        st.table(res_df)
+        st.table(pd.DataFrame(results))
 
 elif len(set(selected_medicines)) < len(selected_medicines):
     st.error("※同じ薬剤が重複して選択されています。異なる薬剤を選択してください。")
