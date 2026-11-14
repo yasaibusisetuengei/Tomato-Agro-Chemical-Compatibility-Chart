@@ -144,7 +144,7 @@ for med in df_matrix.index:
             else:
                 bee_matched = False
 
-    # タバコカスミカメ条件判定（数値に基づく判定のみ）
+    # タバコカスミカメ条件判定
     val_toba = df_matrix.loc[med, toba_col]
     toba_matched = True
     if selected_toba_cond != "指定なし":
@@ -198,6 +198,9 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
         for med1, med2 in pairs:
             res = ""
             if med1 in df_matrix.index and med2 in df_matrix.columns:
+                res = str(df_matrix.loc[med1, res_col if 'res_col' in locals() else med2]) # fix index/col check safely
+            # Safe lookup
+            if med1 in df_matrix.index and med2 in df_matrix.columns:
                 res = str(df_matrix.loc[med1, med2])
             elif med2 in df_matrix.index and med1 in df_matrix.columns:
                 res = str(df_matrix.loc[med2, med1])
@@ -212,8 +215,12 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
                 else:
                     status = "🔴 混用不可（物理性・効力低下等）"
                 has_ng = True
-            elif any(k in res for k in ["○", "◎"]):
-                status = "🟡 条件付き（要攪拌）" if "○" in res else "🟡 条件付き（使用直前）"
+            elif any(k in res for k in ["○", "〇", "◯", "◎"]):
+                # 漢数字の「〇」や各種丸印に対応
+                if any(k in res for k in ["○", "〇", "◯"]):
+                    status = "🟡 条件付き（要攪拌）"
+                else:
+                    status = "🟡 条件付き（使用直前）"
                 has_warning = True
             elif "●" in res:
                 status = "🟢 混用可能"
