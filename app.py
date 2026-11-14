@@ -67,8 +67,6 @@ def get_initial_hiragana(text):
         return "その他"
     
     first_char = text[0]
-    
-    # カタカナをひらがなに変換
     if 'ア' <= first_char <= 'ン':
         first_char = chr(ord(first_char) - 0x60)
     
@@ -77,11 +75,10 @@ def get_initial_hiragana(text):
         "あいうえおかきくけこさしすせそたちつてとはひふへほはひふへほやゆよつ"
     )
     first_char = first_char.translate(dakuon_map)
-    
     return first_char if first_char in HIRAGANA_LIST else "その他"
 
 # ----------------------------------------------------
-# 5. データ読み込み（20261111tomato_2.csvを指定）
+# 5. データ読み込み
 # ----------------------------------------------------
 CSV_FILENAME = "20261111tomato.csv"
 
@@ -90,7 +87,6 @@ def load_data():
     file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CSV_FILENAME)
     if not os.path.exists(file_path):
         return None
-        
     try:
         try:
             return pd.read_csv(file_path, index_col=0, encoding="utf-8")
@@ -127,7 +123,7 @@ bee_col = df_matrix.columns[0]
 toba_col = df_matrix.columns[1]
 
 for med in df_matrix.index:
-    # 1. マルハナバチの条件判定
+    # マルハナバチ条件判定
     val_bee = df_matrix.loc[med, bee_col]
     bee_matched = True
     if selected_bee_cond != "指定なし":
@@ -148,20 +144,18 @@ for med in df_matrix.index:
             else:
                 bee_matched = False
 
-    # 2. タバコカスミカメの条件判定（割合表示や各種表記に対応）
-    val_toba = str(df_matrix.loc[med, toba_col]).strip()
+    # タバコカスミカメ条件判定（数値に基づく判定のみ）
+    val_toba = df_matrix.loc[med, toba_col]
     toba_matched = True
     if selected_toba_cond != "指定なし":
-        if pd.isna(val_toba) or val_toba in ["", "-", "nan"]:
+        if pd.isna(val_toba) or str(val_toba).strip() in ["", "-", "nan"]:
             toba_matched = False
         else:
-            # 割合表示（例: 0〜30%など）や従来の記号（◎）に対応
-            is_low_percentage = False
-            if "〜30" in val_toba or "0〜" in val_toba or "0~" in val_toba or val_toba == "◎":
-                is_low_percentage = True
-            
-            if selected_toba_cond == "低い（0〜30%）":
-                toba_matched = is_low_percentage
+            nums = re.findall(r'\d+', str(val_toba))
+            if nums:
+                num = float(nums[0])
+                if selected_toba_cond == "低い（0〜30%）":
+                    toba_matched = (num <= 30)
             else:
                 toba_matched = False
 
@@ -179,7 +173,6 @@ cols = st.columns(num_select)
 for i in range(num_select):
     with cols[i]:
         st.markdown(f"**【 薬剤 {i+1} 】**")
-        
         selected_initial = st.selectbox("頭文字を選択", options=HIRAGANA_LIST, key=f"initial_{i}")
         filtered_list = [m for m in all_medicines if get_initial_hiragana(m) == selected_initial]
         
@@ -196,7 +189,6 @@ st.markdown("---")
 # ----------------------------------------------------
 if len(selected_medicines) == num_select and len(set(selected_medicines)) == num_select:
     st.subheader("🔍 混用可否 判定結果")
-    
     pairs = list(itertools.combinations(selected_medicines, 2))
     
     if pairs:
@@ -236,7 +228,6 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
                 "判定": status
             })
         
-        # 総合判定メッセージ
         if has_ng:
             st.error("⚠️ **混用不可または問題のある組み合わせが含まれています！** 詳細をご確認ください。3剤以上の混用は推奨していません。")
         elif has_unknown:
@@ -270,7 +261,7 @@ with st.expander("📊 現在の混用表データ（令和8年7月10日 JA全�
     st.dataframe(df_matrix)
 
 # ----------------------------------------------------
-# 9. フッター（注意書き・権利表記・ライセンス情報）
+# 9. フッター
 # ----------------------------------------------------
 st.markdown("---")
 st.markdown(
