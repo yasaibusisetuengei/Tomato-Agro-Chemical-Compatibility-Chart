@@ -112,7 +112,7 @@ st.subheader("💊 検索する薬剤の選択と絞り込み")
 
 col_f1, col_f2 = st.columns(2)
 
-BEE_OPTIONS = ["指定なし", "0日以上", "１日以上", "6日以上"]
+BEE_OPTIONS = ["指定なし", "０日以下", "１日以下", "５日以下", "６日以上"]
 TOBA_OPTIONS = ["指定なし", "低い（0〜30%）"]
 
 with col_f1:
@@ -127,26 +127,40 @@ bee_col = df_matrix.columns[0]
 toba_col = df_matrix.columns[1]
 
 for med in df_matrix.index:
-    # マルハナバチ条件判定
+    # 1. マルハナバチの条件判定
     val_bee = df_matrix.loc[med, bee_col]
     bee_matched = True
-    if selected_bee_cond != "指定なし" and not (pd.isna(val_bee) or str(val_bee).strip() == ""):
-        nums = re.findall(r'\d+', str(val_bee))
-        if nums:
-            num = float(nums[0])
-            if selected_bee_cond == "0日以上":
-                bee_matched = (num >= 0)
-            elif selected_bee_cond == "１日以上":
-                bee_matched = (num >= 1)
-            elif selected_bee_cond == "6日以上":
-                bee_matched = (num >= 6)
+    if selected_bee_cond != "指定なし":
+        if pd.isna(val_bee) or str(val_bee).strip() in ["", "-", "nan"]:
+            bee_matched = False
+        else:
+            nums = re.findall(r'\d+', str(val_bee))
+            if nums:
+                num = float(nums[0])
+                if selected_bee_cond == "０日以下":
+                    bee_matched = (num <= 0)
+                elif selected_bee_cond == "１日以下":
+                    bee_matched = (num <= 1)
+                elif selected_bee_cond == "５日以下":
+                    bee_matched = (num <= 5)
+                elif selected_bee_cond == "６日以上":
+                    bee_matched = (num >= 6)
+            else:
+                bee_matched = False
 
-    # タバコカスミカメ条件判定
+    # 2. タバコカスミカメの条件判定
     val_toba = str(df_matrix.loc[med, toba_col]).strip()
     toba_matched = True
-    if selected_toba_cond != "指定なし" and not (pd.isna(val_toba) or val_toba in ["", "nan"]):
-        if selected_toba_cond == "低い（0〜30%）":
-            toba_matched = (val_toba == "◎")
+    if selected_toba_cond != "指定なし":
+        if pd.isna(val_toba) or val_toba in ["", "-", "nan"]:
+            toba_matched = False
+        else:
+            mapping = {"◎": "低い（0〜30%）"}
+            mapped_val = mapping.get(val_toba)
+            if selected_toba_cond == "低い（0〜30%）":
+                toba_matched = (mapped_val == "低い（0〜30%）")
+            else:
+                toba_matched = False
 
     if bee_matched and toba_matched:
         filtered_medicines_set.append(med)
