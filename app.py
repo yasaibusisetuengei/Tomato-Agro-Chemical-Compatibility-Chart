@@ -81,7 +81,7 @@ def get_initial_hiragana(text):
     return first_char if first_char in HIRAGANA_LIST else "その他"
 
 # ----------------------------------------------------
-# 5. データ読み込み
+# 5. データ読み込み（20261111tomato_2.csvを指定）
 # ----------------------------------------------------
 CSV_FILENAME = "20261111tomato.csv"
 
@@ -148,17 +148,20 @@ for med in df_matrix.index:
             else:
                 bee_matched = False
 
-    # 2. タバコカスミカメの条件判定
+    # 2. タバコカスミカメの条件判定（割合表示や各種表記に対応）
     val_toba = str(df_matrix.loc[med, toba_col]).strip()
     toba_matched = True
     if selected_toba_cond != "指定なし":
         if pd.isna(val_toba) or val_toba in ["", "-", "nan"]:
             toba_matched = False
         else:
-            mapping = {"◎": "低い（0〜30%）"}
-            mapped_val = mapping.get(val_toba)
+            # 割合表示（例: 0〜30%など）や従来の記号（◎）に対応
+            is_low_percentage = False
+            if "〜30" in val_toba or "0〜" in val_toba or "0~" in val_toba or val_toba == "◎":
+                is_low_percentage = True
+            
             if selected_toba_cond == "低い（0〜30%）":
-                toba_matched = (mapped_val == "低い（0〜30%）")
+                toba_matched = is_low_percentage
             else:
                 toba_matched = False
 
