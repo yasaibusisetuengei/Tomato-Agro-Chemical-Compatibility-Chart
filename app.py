@@ -278,10 +278,6 @@ st.markdown(
             ※本アプリは農薬混用の目安を提供するものです。実際の使用にあたっては、必ず農薬ボトルのラベルおよび最新の指示事項をご確認ください。
             ※この表は、農薬メーカーによる試験結果に基づき取りまとめられたものです。栽培条件、気象条件等で反応が異なる場合があるので参考として活用して下さい。
             ※登録内容は追加・変更されることがありますので、常に最新の情報を登録情報等や農薬ラベルで必ずご確認下さい。
-        </p>
-        <p style='margin-top: 15px;'>
-            © 2026 福岡県農林業総合試験場野菜部 (作成: 岩瀬りさ) | Powered by Streamlit & Pandas
-        </p>
         <p style='font-size: 0.8em; color: #777777;'>
             This application uses open-source software libraries (Streamlit, Pandas, Python).
         </p>
