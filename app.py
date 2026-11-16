@@ -8,7 +8,7 @@ import pandas as pd
 # 1. ページ基本設定
 # ----------------------------------------------------
 st.set_page_config(
-    page_title="トマト農薬 混用可否確認アプリ",
+    page_title="トマト農薬混用事例検索アプリ",
     page_icon="🍅",
     layout="wide"
 )
@@ -22,7 +22,7 @@ def check_password():
         st.session_state["authenticated"] = False
 
     if not st.session_state["authenticated"]:
-        st.title("🍅 トマト農薬 混用可否確認アプリ - ログイン")
+        st.title("🍅 トマト農薬混用事例検索アプリ - ログイン")
         st.warning("このアプリを利用するにはパスワードが必要です。")
         
         default_password = st.secrets.get("password", "tomato123")
@@ -43,8 +43,8 @@ if not check_password():
 # ----------------------------------------------------
 # 3. タイトル・説明
 # ----------------------------------------------------
-st.title("🍅 トマト農薬 混用可否確認アプリ")
-st.caption("混用表データから、農薬混用可否を一括で確認できます。")
+st.title("🍅 トマト農薬混用事例検索アプリ")
+st.caption("混用表データから、混用事例を一括で確認できます。")
 
 # ----------------------------------------------------
 # 4. 50音変換・頭文字抽出ヘルパー関数
@@ -188,7 +188,7 @@ st.markdown("---")
 # 7. 混用結果の照会および表示
 # ----------------------------------------------------
 if len(selected_medicines) == num_select and len(set(selected_medicines)) == num_select:
-    st.subheader("🔍 混用可否 判定結果")
+    st.subheader("🔍 混用可否 検索結果")
     pairs = list(itertools.combinations(selected_medicines, 2))
     
     if pairs:
@@ -218,12 +218,12 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
             elif any(k in res for k in ["○", "〇", "◯", "◎"]):
                 # 漢数字の「〇」や各種丸印に対応
                 if any(k in res for k in ["○", "〇", "◯"]):
-                    status = "🟡 条件付き（要攪拌）"
+                    status = "⚠️条件付き（要攪拌）"
                 else:
-                    status = "🟡 条件付き（使用直前）"
+                    status = "⚠️条件付き（使用直前）"
                 has_warning = True
             elif "●" in res:
-                status = "🟢 混用可能"
+                status = "✅ 混用可能"
             else:
                 status = "⚪ 不明 / 知見乏しい"
                 has_unknown = True
