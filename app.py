@@ -80,20 +80,22 @@ def get_initial_hiragana(text):
 # ----------------------------------------------------
 # 5. データ読み込み
 # ----------------------------------------------------
-CSV_FILENAME = "20261111tomato.csv"
+CSV_FILENAME = "20261124tomato.csv"
 
 @st.cache_data
 def load_data():
     file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CSV_FILENAME)
     if not os.path.exists(file_path):
         return None
-    try:
-        try:
-            return pd.read_csv(file_path, index_col=0, encoding="utf-8")
-        except UnicodeDecodeError:
-            return pd.read_csv(file_path, index_col=0, encoding="cp932")
-    except Exception:
-        return None
+    for enc in ("utf-8", "cp932"):
+        for sep in ("\t", ","):
+            try:
+                df = pd.read_csv(file_path, index_col=0, encoding=enc, sep=sep)
+                if not df.empty and df.shape[1] >= 2:
+                    return df
+            except Exception:
+                continue
+    return None
 
 df_matrix = load_data()
 
@@ -198,13 +200,12 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
         for med1, med2 in pairs:
             res = ""
             if med1 in df_matrix.index and med2 in df_matrix.columns:
-                res = str(df_matrix.loc[med1, res_col if 'res_col' in locals() else med2]) # fix index/col check safely
-            # Safe lookup
-            if med1 in df_matrix.index and med2 in df_matrix.columns:
                 res = str(df_matrix.loc[med1, med2])
             elif med2 in df_matrix.index and med1 in df_matrix.columns:
                 res = str(df_matrix.loc[med2, med1])
             
+            if res == "nan":
+                res = ""
             res = res.strip()
             
             if any(k in res for k in ["×", "▲", "△"]):
@@ -215,12 +216,13 @@ if len(selected_medicines) == num_select and len(set(selected_medicines)) == num
                 else:
                     status = "🔴 混用不可（物理性・効力低下等）"
                 has_ng = True
-            elif any(k in res for k in ["○", "〇", "◯", "◎"]):
-                # 漢数字の「〇」や各種丸印に対応
+            elif any(k in res for k in ["○", "〇", "◯", "◎", "1", "１"]):
                 if any(k in res for k in ["○", "〇", "◯"]):
                     status = "⚠️条件付き（要攪拌）"
-                else:
+                elif "◎" in res:
                     status = "⚠️条件付き（使用直前）"
+                else:
+                    status = "⚠️条件付き（混用事例1例・薬害なし）"
                 has_warning = True
             elif "●" in res:
                 status = "✅ 混用可能"
@@ -256,12 +258,13 @@ with st.expander("📊 現在の混用表データ（令和8年7月10日 JA全�
     st.markdown("**【 表内の記号の凡例 】**")
     st.markdown(
         """
-        - **●** : 混用可能  
-        - **○** : 条件付き（要攪拌）  
-        - **◎** : 条件付き（使用直前）  
-        - **×** : 混用不可  
-        - **▲** : 混用不可（薬害問題）  
-        - **△** : 混用不可（物理性・効力低下等）
+- **●** : 混用可能  
+- **○** : 条件付き（要攪拌）  
+- **◎** : 条件付き（使用直前）  
+- **1** : 条件付き（混用事例が1例あり、薬害が認められなかった）  
+- **×** : 混用不可  
+- **▲** : 混用不可（薬害問題）  
+- **△** : 混用不可（物理性・効力低下等）
         """
     )
     st.markdown("---")
